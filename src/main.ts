@@ -1,43 +1,48 @@
 import { SIPClient } from './sip/client';
 
+// Interfaces
+interface Contact {
+    id: string;
+    name: string;
+    number: string;
+    type: 'user' | 'group';
+    members?: string[]; // For groups
+}
+
+interface ChatMessage {
+    sender: string;
+    text: string;
+    time: string;
+    isIncoming: boolean;
+}
+
+// State
 let sipClient: SIPClient | null = null;
 let callStartTime: number = 0;
 let timerInterval: any = null;
+let contacts: Contact[] = JSON.parse(localStorage.getItem('contacts') || '[]');
+let activeChatNumber: string | null = null;
+let chatHistory: Record<string, ChatMessage[]> = JSON.parse(localStorage.getItem('chatHistory') || '{}');
 
-// UI Elements: Screens
+// UI Screens
 const loginScreen = document.getElementById('loginScreen') as HTMLDivElement;
 const mainScreen = document.getElementById('mainScreen') as HTMLDivElement;
 const dialScreen = document.getElementById('dialScreen') as HTMLDivElement;
+const contactsScreen = document.getElementById('contactsScreen') as HTMLDivElement;
 const chatScreen = document.getElementById('chatScreen') as HTMLDivElement;
+const chatRoomScreen = document.getElementById('chatRoomScreen') as HTMLDivElement;
 const callOverlay = document.getElementById('callOverlay') as HTMLDivElement;
 const incomingModal = document.getElementById('incomingModal') as HTMLDivElement;
+const addContactModal = document.getElementById('addContactModal') as HTMLDivElement;
 
-// UI Elements: Navigation
-const navDial = document.getElementById('navDial') as HTMLButtonElement;
-const navChat = document.getElementById('navChat') as HTMLButtonElement;
-const btnLogoutNav = document.getElementById('btnLogoutNav') as HTMLButtonElement;
-
-// UI Elements: Controls
-const btnLogin = document.getElementById('btnLogin') as HTMLButtonElement;
-const btnCallAudio = document.getElementById('btnCallAudio') as HTMLButtonElement;
-const btnCallVideo = document.getElementById('btnCallVideo') as HTMLButtonElement;
-const btnHangup = document.getElementById('btnHangup') as HTMLButtonElement;
-const btnAnswerAudio = document.getElementById('btnAnswerAudio') as HTMLButtonElement;
-const btnAnswerVideo = document.getElementById('btnAnswerVideo') as HTMLButtonElement;
-const btnReject = document.getElementById('btnReject') as HTMLButtonElement;
-const btnSendMessage = document.getElementById('btnSendMessage') as HTMLButtonElement;
-
-// UI Elements: Info
-const regStatusSpan = document.getElementById('regStatus') as HTMLSpanElement;
-const headerUser = document.getElementById('headerUser') as HTMLDivElement;
-const dialpadDisplay = document.getElementById('dialpadDisplay') as HTMLDivElement;
-const callTimer = document.getElementById('callTimer') as HTMLDivElement;
-const overlayTarget = document.getElementById('overlayTarget') as HTMLDivElement;
-const overlayStatus = document.getElementById('overlayStatus') as HTMLDivElement;
-const incomingCaller = document.getElementById('incomingCaller') as HTMLDivElement;
-const messageList = document.getElementById('messageList') as HTMLDivElement;
-const msgInput = document.getElementById('msgInput') as HTMLInputElement;
-const chatTarget = document.getElementById('chatTarget') as HTMLInputElement;
+// UI Components
+const navButtons = document.querySelectorAll('.nav-btn');
+const contactList = document.getElementById('contactList') as HTMLDivElement;
+const chatList = document.getElementById('chatList') as HTMLDivElement;
+const chatMessages = document.getElementById('chatMessages') as HTMLDivElement;
+const chatInput = document.getElementById('chatInput') as HTMLInputElement;
+const chatBadge = document.getElementById('chatBadge') as HTMLSpanElement;
+const headerTitle = document.getElementById('headerTitle') as HTMLSpanElement;
 
 // Inputs
 const usernameInput = document.getElementById('username') as HTMLInputElement;
@@ -45,97 +50,202 @@ const passwordInput = document.getElementById('password') as HTMLInputElement;
 const domainInput = document.getElementById('domain') as HTMLInputElement;
 const wsPortInput = document.getElementById('wsPort') as HTMLInputElement;
 
-// --- NAVIGATION LOGIC ---
-navDial.addEventListener('click', () => switchTab('dial'));
-navChat.addEventListener('click', () => switchTab('chat'));
+// --- INITIALIZATION ---
+updateContactList();
+updateChatList();
 
-function switchTab(tab: 'dial' | 'chat') {
-    dialScreen.classList.toggle('active', tab === 'dial');
-    chatScreen.classList.toggle('active', tab === 'chat');
-    navDial.classList.toggle('active', tab === 'dial');
-    navChat.classList.toggle('active', tab === 'chat');
-}
+// --- NAVIGATION ---
+navButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+        const id = btn.id;
+        if (id === 'navDial') switchTab('dial');
+        if (id === 'navContacts') switchTab('contacts');
+        if (id === 'navChat') switchTab('chat');
+    });
+});
 
-// --- MESSAGING LOGIC ---
-function addMessageBubble(sender: string, text: string, isIncoming: boolean) {
-    const div = document.createElement('div');
-    div.className = `msg-bubble ${isIncoming ? 'msg-in' : 'msg-out'}`;
-    div.innerHTML = `
-        <span class="msg-sender">${isIncoming ? sender : 'You'}</span>
-        ${text}
-    `;
-    
-    // Remove "No messages" placeholder
-    if (messageList.innerText.includes('No messages yet')) {
-        messageList.innerHTML = '';
+function switchTab(tab: 'dial' | 'contacts' | 'chat') {
+    [dialScreen, contactsScreen, chatScreen].forEach(s => s.classList.remove('active'));
+    navButtons.forEach(b => b.classList.remove('active'));
+    chatRoomScreen.classList.remove('active');
+
+    if (tab === 'dial') {
+        dialScreen.classList.add('active');
+        document.getElementById('navDial')?.classList.add('active');
+        headerTitle.innerText = 'Phone';
+    } else if (tab === 'contacts') {
+        contactsScreen.classList.add('active');
+        document.getElementById('navContacts')?.classList.add('active');
+        headerTitle.innerText = 'Contacts';
+        updateContactList();
+    } else if (tab === 'chat') {
+        chatScreen.classList.add('active');
+        document.getElementById('navChat')?.classList.add('active');
+        headerTitle.innerText = 'Messages';
+        updateChatList();
+        chatBadge.style.display = 'none';
+        chatBadge.innerText = '0';
     }
-    
-    messageList.appendChild(div);
-    messageList.scrollTop = messageList.scrollHeight;
 }
 
-btnSendMessage.addEventListener('click', () => {
-    const target = chatTarget.value;
-    const text = msgInput.value;
-    if (!target || !text || !sipClient) return;
+// --- CONTACTS LOGIC ---
+(window as any).showAddContactModal = () => addContactModal.classList.add('active');
+(window as any).hideAddContactModal = () => addContactModal.classList.remove('active');
+
+(window as any).saveNewContact = () => {
+    const name = (document.getElementById('contactName') as HTMLInputElement).value;
+    const number = (document.getElementById('contactNumber') as HTMLInputElement).value;
+    if (!name || !number) return;
+
+    const newContact: Contact = { id: Date.now().toString(), name, number, type: 'user' };
+    contacts.push(newContact);
+    localStorage.setItem('contacts', JSON.stringify(contacts));
+    updateContactList();
+    (window as any).hideAddContactModal();
+};
+
+function updateContactList() {
+    contactList.innerHTML = '';
+    contacts.forEach(c => {
+        const item = document.createElement('div');
+        item.className = 'list-item';
+        item.innerHTML = `
+            <div class="avatar">${c.name[0].toUpperCase()}</div>
+            <div class="item-info">
+                <span class="item-name">${c.name}</span>
+                <span class="item-sub">${c.number}</span>
+            </div>
+            <button class="nav-btn" onclick="startChat('${c.number}', '${c.name}')">✉</button>
+        `;
+        item.onclick = (e) => {
+            if ((e.target as HTMLElement).tagName !== 'BUTTON') {
+                (document.getElementById('dialpadDisplay') as HTMLDivElement).innerText = c.number;
+                switchTab('dial');
+            }
+        };
+        contactList.appendChild(item);
+    });
+}
+
+// --- CHAT LOGIC ---
+(window as any).startChat = (number: string, name: string) => {
+    activeChatNumber = number;
+    document.getElementById('chatRoomName')!.innerText = name;
+    document.getElementById('chatRoomNumber')!.innerText = number;
+    chatRoomScreen.classList.add('active');
+    renderMessages(number);
+};
+
+(window as any).closeChatRoom = () => {
+    chatRoomScreen.classList.remove('active');
+    activeChatNumber = null;
+    updateChatList();
+};
+
+function renderMessages(number: string) {
+    chatMessages.innerHTML = '';
+    const history = chatHistory[number] || [];
+    history.forEach(msg => {
+        const div = document.createElement('div');
+        div.className = `bubble ${msg.isIncoming ? 'bubble-in' : 'bubble-out'}`;
+        div.innerHTML = `
+            ${msg.text}
+            <div class="bubble-time">${msg.time}</div>
+        `;
+        chatMessages.appendChild(div);
+    });
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function updateChatList() {
+    chatList.innerHTML = '';
+    const lastMessages = Object.keys(chatHistory);
+    if (lastMessages.length === 0) {
+        chatList.innerHTML = '<div style="text-align: center; color: #999; padding: 40px; font-size: 12px;">No active conversations</div>';
+        return;
+    }
+
+    lastMessages.forEach(num => {
+        const history = chatHistory[num];
+        const lastMsg = history[history.length - 1];
+        const contact = contacts.find(c => c.number === num);
+        const name = contact ? contact.name : num;
+
+        const item = document.createElement('div');
+        item.className = 'list-item';
+        item.innerHTML = `
+            <div class="avatar">${name[0].toUpperCase()}</div>
+            <div class="item-info">
+                <span class="item-name">${name}</span>
+                <span class="item-sub">${lastMsg.text}</span>
+            </div>
+        `;
+        item.onclick = () => (window as any).startChat(num, name);
+        chatList.appendChild(item);
+    });
+}
+
+document.getElementById('btnSendChat')?.addEventListener('click', () => {
+    const text = chatInput.value;
+    if (!text || !activeChatNumber || !sipClient) return;
 
     const domain = domainInput.value;
-    const fullUri = `sip:${target}@${domain}`;
+    const fullUri = `sip:${activeChatNumber}@${domain}`;
     
     try {
         sipClient.sendMessage(fullUri, text);
-        addMessageBubble('Me', text, false);
-        msgInput.value = '';
+        saveMessage(activeChatNumber, text, false);
+        chatInput.value = '';
+        renderMessages(activeChatNumber);
     } catch (e) {
-        alert("Failed to send message: " + e);
+        alert("Failed to send: " + e);
     }
 });
 
-// --- AUTH LOGIC ---
-btnLogin.addEventListener('click', () => {
+function saveMessage(number: string, text: string, isIncoming: boolean) {
+    if (!chatHistory[number]) chatHistory[number] = [];
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    chatHistory[number].push({ sender: isIncoming ? number : 'Me', text, time, isIncoming });
+    localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+}
+
+// --- SIP & AUTH ---
+document.getElementById('btnLogin')?.addEventListener('click', () => {
     const username = usernameInput.value;
     const domain = domainInput.value;
     const password = passwordInput.value;
     const port = wsPortInput.value;
 
-    const isSecure = port === '8089' || port === '443';
     const config = {
-        wssUrl: `${isSecure ? 'wss' : 'ws'}://${domain}:${port}/ws`,
+        wssUrl: `ws://${domain}:${port}/ws`,
         sipUri: `sip:${username}@${domain}`,
         password: password,
         displayName: username
     };
-
-    btnLogin.innerText = "Authenticating...";
-    btnLogin.disabled = true;
 
     sipClient = new SIPClient(config);
     
     sipClient.onRegistered = () => {
         loginScreen.classList.remove('active');
         mainScreen.classList.add('active');
-        headerUser.innerText = `${username}@${domain}`;
-        btnLogin.innerText = "Authenticate";
-        btnLogin.disabled = false;
     };
 
-    sipClient.onRegistrationFailed = (cause) => {
-        alert(`Auth Failed: ${cause}`);
-        btnLogin.innerText = "Authenticate";
-        btnLogin.disabled = false;
-        sipClient?.stop();
-    };
+    sipClient.onRegistrationFailed = (cause) => alert("Failed: " + cause);
 
     sipClient.onNewMessage = (sender, body) => {
-        addMessageBubble(sender, body, true);
-        // Maybe show a small badge on the Chat tab if not active
-        if (!chatScreen.classList.contains('active')) {
-            navChat.style.color = 'var(--royal-gold)';
+        saveMessage(sender, body, true);
+        if (activeChatNumber === sender) {
+            renderMessages(sender);
+        } else {
+            const currentBadge = parseInt(chatBadge.innerText) || 0;
+            chatBadge.innerText = (currentBadge + 1).toString();
+            chatBadge.style.display = 'flex';
         }
     };
 
     sipClient.onIncomingCall = () => {
-        incomingCaller.innerText = "Incoming Request"; 
+        const session = (sipClient as any).currentSession;
+        document.getElementById('incomingCaller')!.innerText = session.remote_identity.uri.user;
         incomingModal.classList.add('active');
     };
 
@@ -143,113 +253,49 @@ btnLogin.addEventListener('click', () => {
         stopTimer();
         callOverlay.classList.remove('active');
         incomingModal.classList.remove('active');
-        dialpadDisplay.innerText = '';
     };
 
     sipClient.start();
-
-    setInterval(() => {
-        if (sipClient && mainScreen.classList.contains('active')) {
-            const status = sipClient.getUAStatus();
-            regStatusSpan.innerText = status;
-            regStatusSpan.className = 'status-pill ' + (status === 'registered' ? 'status-registered' : '');
-        }
-    }, 1000);
 });
 
-btnLogoutNav.addEventListener('click', () => {
-    sipClient?.stop();
-    sipClient = null;
-    mainScreen.classList.remove('active');
-    loginScreen.classList.add('active');
-});
+// --- CALL ACTIONS ---
+document.getElementById('btnCallAudio')?.addEventListener('click', () => initiateCall(false));
+document.getElementById('btnCallVideo')?.addEventListener('click', () => initiateCall(true));
 
-// --- CALL LOGIC ---
 function initiateCall(video: boolean) {
-    if (!sipClient) return;
-    const targetNumber = dialpadDisplay.innerText;
-    if (!targetNumber) return;
-
-    const domain = domainInput.value;
-    const fullUri = `sip:${targetNumber}@${domain}`;
-
-    try {
-        const session = sipClient.call(fullUri, video);
-        overlayTarget.innerText = targetNumber;
-        overlayStatus.innerText = video ? "Video Call..." : "Audio Call...";
-        callOverlay.classList.add('active');
-
-        session.on('confirmed', () => {
-            overlayStatus.innerText = "Connected";
-            startTimer();
-        });
-    } catch (e) {
-        alert(`Call Error: ${e}`);
-    }
+    const num = (document.getElementById('dialpadDisplay') as HTMLDivElement).innerText;
+    if (!num || !sipClient) return;
+    const fullUri = `sip:${num}@${domainInput.value}`;
+    
+    const session = sipClient.call(fullUri, video);
+    document.getElementById('overlayTarget')!.innerText = num;
+    callOverlay.classList.add('active');
+    
+    session.on('confirmed', () => {
+        startTimer();
+        if (!video) document.getElementById('localVideo')!.style.display = 'none';
+    });
 }
 
-btnCallAudio.addEventListener('click', () => initiateCall(false));
-btnCallVideo.addEventListener('click', () => initiateCall(true));
-
-btnHangup.addEventListener('click', () => {
-    sipClient?.hangup();
-    callOverlay.classList.remove('active');
-    stopTimer();
-});
-
-btnAnswerAudio.addEventListener('click', () => {
+document.getElementById('btnHangup')?.addEventListener('click', () => sipClient?.hangup());
+document.getElementById('btnAnswerAudio')?.addEventListener('click', () => {
     sipClient?.answer(false);
     incomingModal.classList.remove('active');
     callOverlay.classList.add('active');
-    overlayTarget.innerText = "Incoming Call";
-    startTimer();
-});
-
-btnAnswerVideo.addEventListener('click', () => {
-    sipClient?.answer(true);
-    incomingModal.classList.remove('active');
-    callOverlay.classList.add('active');
-    overlayTarget.innerText = "Video Call";
-    startTimer();
-});
-
-btnReject.addEventListener('click', () => {
-    sipClient?.hangup();
-    incomingModal.classList.remove('active');
-});
-
-// --- KEYBOARD SUPPORT ---
-window.addEventListener('keydown', (e) => {
-    if (loginScreen.classList.contains('active')) return; // Don't trigger dialpad on login screen
-    
-    if (/^[0-9\*#]$/.test(e.key)) {
-        (window as any).appendDial(e.key);
-    }
-    else if (e.key === 'Backspace') {
-        (window as any).backspaceDial();
-    }
-    else if (e.key === 'Enter') {
-        if (incomingModal.classList.contains('active')) {
-            btnAnswerAudio.click();
-        } else if (!callOverlay.classList.contains('active') && dialScreen.classList.contains('active')) {
-            btnCallAudio.click();
-        }
-    }
 });
 
 // Timer
 function startTimer() {
-    stopTimer();
     callStartTime = Date.now();
     timerInterval = setInterval(() => {
         const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
         const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
         const secs = (elapsed % 60).toString().padStart(2, '0');
-        callTimer.innerText = `${mins}:${secs}`;
+        document.getElementById('callTimer')!.innerText = `${mins}:${secs}`;
     }, 1000);
 }
 
 function stopTimer() {
     if (timerInterval) clearInterval(timerInterval);
-    callTimer.innerText = "00:00";
+    document.getElementById('callTimer')!.innerText = "00:00";
 }

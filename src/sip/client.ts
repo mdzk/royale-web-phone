@@ -119,7 +119,12 @@ export class SIPClient {
         if (!this.ua || !this.ua.isRegistered()) {
             throw new Error('UA is not registered.');
         }
-        this.ua.sendMessage(targetUri, body);
+        const message = this.ua.sendMessage(targetUri, body);
+        
+        message.on('succeeded', () => console.log('SIP: Message sent successfully!'));
+        message.on('failed', (data: any) => console.error('SIP: Message failed to send:', data.cause));
+        
+        return message;
     }
 
     private setupSession(session: any) {
