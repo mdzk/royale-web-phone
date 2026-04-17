@@ -11,10 +11,14 @@ export interface SIPConfig {
 export class SIPClient {
     private ua: any = null;
     private currentSession: any = null;
+    
+    // Callbacks
     public onIncomingCall?: () => void;
     public onSessionEnd?: () => void;
     public onRegistered?: () => void;
     public onRegistrationFailed?: (cause: string) => void;
+    public onNewMessage?: (sender: string, body: string) => void;
+
     private config: SIPConfig;
 
     constructor(config: SIPConfig) {
@@ -52,6 +56,7 @@ export class SIPClient {
             if (this.onRegistrationFailed) this.onRegistrationFailed(data.cause);
         });
 
+        // Inbound Sessions (Calls)
         this.ua.on('newRTCSession', (data: any) => {
             const session = data.session;
             console.log('SIP: New RTC Session (Direction:', data.originator, ')');
@@ -64,6 +69,16 @@ export class SIPClient {
             this.setupSession(session);
         });
 
+        // Inbound Messages
+        this.ua.on('newMessage', (data: any) => {
+            console.log('SIP: New Message received from', data.originator);
+            if (data.originator === 'remote') {
+                const sender = data.request.from.uri.user;
+                const body = data.request.body;
+                if (this.onNewMessage) this.onNewMessage(sender, body);
+            }
+        });
+
         this.ua.start();
     }
 
@@ -74,13 +89,13 @@ export class SIPClient {
         }
     }
 
-    public call(targetUri: string) {
+    public call(targetUri: string, video: boolean = false) {
         if (!this.ua || !this.ua.isRegistered()) {
             throw new Error('UA is not registered.');
         }
 
         const options = {
-            mediaConstraints: { audio: true, video: false },
+            mediaConstraints: { audio: true, video: video },
             pcConfig: {
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
@@ -91,13 +106,20 @@ export class SIPClient {
             },
             rtcOfferConstraints: {
                 offerToReceiveAudio: 1,
-                offerToReceiveVideo: 0
+                offerToReceiveVideo: video ? 1 : 0
             }
         };
 
         const session = this.ua.call(targetUri, options);
         this.setupSession(session);
         return session;
+    }
+
+    public sendMessage(targetUri: string, body: string) {
+        if (!this.ua || !this.ua.isRegistered()) {
+            throw new Error('UA is not registered.');
+        }
+        this.ua.sendMessage(targetUri, body);
     }
 
     private setupSession(session: any) {
@@ -122,12 +144,23 @@ export class SIPClient {
         session.on('peerconnection', (data: any) => {
             const pc = data.peerconnection;
             pc.addEventListener('track', (event: RTCTrackEvent) => {
-                console.log('SIP: Remote track received');
-                const remoteAudio = document.getElementById('remoteAudio') as HTMLAudioElement;
-                if (remoteAudio) {
-                    remoteAudio.srcObject = event.streams[0];
+                console.log('SIP: Remote track received:', event.track.kind);
+                
+                if (event.track.kind === 'audio') {
+                    const remoteAudio = document.getElementById('remoteAudio') as HTMLAudioElement;
+                    if (remoteAudio) remoteAudio.srcObject = event.streams[0];
+                } else if (event.track.kind === 'video') {
+                    const remoteVideo = document.getElementById('remoteVideo') as HTMLVideoElement;
+                    if (remoteVideo) remoteVideo.srcObject = event.streams[0];
                 }
             });
+
+            // Handle local stream for video preview
+            const localStream = session.connection.getLocalStreams()[0];
+            if (localStream) {
+                const localVideo = document.getElementById('localVideo') as HTMLVideoElement;
+                if (localVideo) localVideo.srcObject = localStream;
+            }
         });
     }
 
@@ -137,10 +170,10 @@ export class SIPClient {
         }
     }
 
-    public answer() {
+    public answer(video: boolean = false) {
         if (this.currentSession && this.currentSession.direction === 'incoming') {
             this.currentSession.answer({
-                mediaConstraints: { audio: true, video: false }
+                mediaConstraints: { audio: true, video: video }
             });
         }
     }
