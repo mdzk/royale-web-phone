@@ -377,6 +377,8 @@ document.getElementById('btnLogin')?.addEventListener('click', () => {
 
     sipClient.onIncomingCall = () => {
         const session = (sipClient as any).currentSession;
+        if (!session) return;
+        
         const callerNum = session.remote_identity.uri.user;
         const contact = contacts.find(c => c.number === callerNum);
         document.getElementById('incomingCaller')!.innerText = contact ? contact.name : callerNum;

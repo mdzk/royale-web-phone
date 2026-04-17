@@ -61,12 +61,12 @@ export class SIPClient {
             const session = data.session;
             console.log('SIP: New RTC Session (Direction:', data.originator, ')');
 
+            this.setupSession(session);
+
             if (data.originator === 'remote') {
                 console.log('SIP: Incoming call from', session.remote_identity.uri.toString());
                 if (this.onIncomingCall) this.onIncomingCall();
             }
-
-            this.setupSession(session);
         });
 
         // Inbound Messages
