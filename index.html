@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Baginda Royale Phone v2</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --royal-navy: #0f172a;
+        --royal-gold: #c5a059;
+        --ivory: #fdfcf0;
+        --danger: #991b1b;
+        --success: #166534;
+        --shadow: 0 10px 25px rgba(0,0,0,0.1);
+      }
+
+      * { box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+      
+      body { 
+        background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+        display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0;
+        color: var(--royal-navy);
+      }
+      
+      .phone-container { 
+        background: var(--ivory); 
+        width: 380px; height: 720px; 
+        border-radius: 40px; 
+        box-shadow: 0 40px 100px rgba(0,0,0,0.6); 
+        border: 12px solid #1a1a1a; 
+        position: relative; overflow: hidden; display: flex; flex-direction: column;
+        transition: transform 0.3s ease;
+      }
+
+      /* --- Screens --- */
+      .screen { display: none; flex-direction: column; height: 100%; padding: 40px 30px; animation: fadeIn 0.5s ease; }
+      .screen.active { display: flex; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+      h2 { 
+        font-family: 'Playfair Display', serif; text-align: center; 
+        color: var(--royal-navy); font-size: 32px; margin-bottom: 30px;
+      }
+
+      /* --- Login Form --- */
+      .input-group { margin-bottom: 25px; position: relative; }
+      .input-group label { 
+        font-size: 10px; font-weight: 700; color: var(--royal-gold); 
+        letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; display: block;
+      }
+      .input-group input { 
+        width: 100%; padding: 10px 0; border: none; border-bottom: 2px solid #e2e8f0;
+        background: transparent; font-size: 16px; outline: none; transition: 0.3s;
+      }
+      .input-group input:focus { border-bottom-color: var(--royal-gold); }
+
+      .btn-primary { 
+        background: var(--royal-navy); color: var(--royal-gold); 
+        border: 1px solid var(--royal-gold); padding: 18px; border-radius: 8px; 
+        font-weight: 600; cursor: pointer; text-transform: uppercase;
+        letter-spacing: 3px; transition: 0.3s; margin-top: 20px;
+      }
+      .btn-primary:hover { background: var(--royal-gold); color: var(--royal-navy); }
+
+      /* --- Header --- */
+      .phone-header { padding: 20px; display: flex; flex-direction: column; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.05); }
+      .user-info { font-size: 11px; color: var(--royal-gold); letter-spacing: 1px; font-weight: 600; }
+      .status-pill { 
+        margin-top: 8px; font-size: 9px; padding: 3px 12px; border-radius: 20px; 
+        border: 1px solid #ddd; color: #999; text-transform: uppercase;
+      }
+      .status-registered { border-color: var(--success); color: var(--success); font-weight: bold; background: rgba(22, 101, 52, 0.05); }
+
+      /* --- Display --- */
+      #dialpadDisplay { 
+        height: 100px; font-size: 42px; display: flex; align-items: center; justify-content: center; 
+        color: var(--royal-navy); font-weight: 300; margin: 10px 0; letter-spacing: 2px;
+      }
+
+      /* --- Grid --- */
+      .dialpad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; flex-grow: 1; padding: 10px; }
+      .digit-btn { 
+        height: 70px; width: 70px; margin: auto; border-radius: 50%; border: 1px solid transparent; 
+        background: white; font-size: 26px; cursor: pointer; transition: 0.2s; 
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+      }
+      .digit-btn:hover { border-color: var(--royal-gold); transform: translateY(-3px); }
+      .digit-btn:active, .digit-btn.kbd-active { background: var(--royal-gold) !important; color: white !important; transform: scale(0.9); }
+      .digit-btn.kbd-active .digit-sub { color: white !important; }
+      .digit-sub { font-size: 8px; color: var(--royal-gold); font-weight: 600; margin-top: 4px; }
+
+      /* --- Actions --- */
+      .action-row { display: flex; justify-content: space-around; align-items: center; padding: 30px 0; }
+      .btn-call { 
+        width: 75px; height: 75px; border-radius: 50%; border: none;
+        background: var(--success); color: white; font-size: 28px;
+        box-shadow: 0 10px 25px rgba(22, 101, 52, 0.4); cursor: pointer; transition: 0.3s;
+      }
+      .btn-call:hover { transform: scale(1.1); }
+      .btn-side { background: transparent; border: none; color: var(--royal-gold); font-size: 12px; cursor: pointer; text-transform: uppercase; font-weight: 600; letter-spacing: 1px; }
+
+      /* --- Call Overlay --- */
+      .call-overlay { 
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+        background: var(--royal-navy); color: var(--ivory); 
+        display: none; flex-direction: column; align-items: center; 
+        justify-content: center; z-index: 100; padding: 60px; text-align: center;
+      }
+      .call-overlay.active { display: flex; }
+      .overlay-header { font-family: 'Playfair Display', serif; font-size: 36px; margin-bottom: 10px; }
+      .call-timer { font-size: 28px; margin-top: 40px; font-weight: 200; font-variant-numeric: tabular-nums; }
+      .btn-hangup { 
+        background: var(--danger); width: 80px; height: 80px; border-radius: 50%; 
+        border: none; color: white; font-size: 32px; cursor: pointer; 
+        margin-top: auto; box-shadow: 0 15px 35px rgba(153, 27, 27, 0.5); transition: 0.3s;
+      }
+      .btn-hangup:hover { transform: scale(1.1); }
+
+      /* --- Incoming --- */
+      .incoming-modal { 
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(15px);
+        display: none; flex-direction: column; align-items: center; justify-content: center;
+        z-index: 110; color: white;
+      }
+      .incoming-modal.active { display: flex; }
+      .incoming-caller { font-family: 'Playfair Display', serif; font-size: 36px; margin-bottom: 60px; }
+      .incoming-actions { display: flex; gap: 50px; }
+      .btn-inc { width: 80px; height: 80px; border-radius: 50%; border: none; color: white; cursor: pointer; font-size: 32px; transition: 0.3s; }
+      .btn-inc:hover { transform: scale(1.1); }
+      .btn-ans { background: var(--success); box-shadow: 0 10px 30px rgba(22, 101, 52, 0.4); }
+      .btn-rej { background: var(--danger); box-shadow: 0 10px 30px rgba(153, 27, 27, 0.4); }
+
+      /* --- Console --- */
+      #logConsole { 
+        background: #000; color: #666; font-family: monospace; font-size: 8px; 
+        height: 60px; overflow-y: auto; padding: 10px; margin: 0 20px 20px 20px; 
+        border-radius: 8px; opacity: 0.7;
+      }
+      
+      .icon { font-style: normal; }
+    </style>
+  </head>
+  <body>
+    <div class="phone-container" id="phoneBody">
+      
+      <!-- Login -->
+      <div id="loginScreen" class="screen active">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <span style="color: var(--royal-gold); font-size: 50px;">⚜</span>
+        </div>
+        <h2>Royale Access</h2>
+        <div class="input-group">
+          <label>Royal Identity</label>
+          <input type="text" id="username" value="031" autofocus>
+        </div>
+        <div class="input-group">
+          <label>Access Key</label>
+          <input type="password" id="password" value="12345a">
+        </div>
+        <div class="input-group">
+          <label>Domain</label>
+          <input type="text" id="domain" value="10.10.10.97">
+        </div>
+        <div class="input-group">
+          <label>Gateway Port</label>
+          <input type="text" id="wsPort" value="8088">
+        </div>
+        <button id="btnLogin" class="btn-primary">Authenticate</button>
+      </div>
+
+      <!-- Main -->
+      <div id="mainScreen" class="screen">
+        <div class="phone-header">
+          <div class="user-info" id="headerUser">031@DOMAIN</div>
+          <div class="status-pill" id="regStatus">Disconnected</div>
+        </div>
+
+        <div id="dialpadDisplay"></div>
+
+        <div class="dialpad-grid">
+          <button class="digit-btn" id="key-1" onclick="appendDial('1')">1<span class="digit-sub">&nbsp;</span></button>
+          <button class="digit-btn" id="key-2" onclick="appendDial('2')">2<span class="digit-sub">ABC</span></button>
+          <button class="digit-btn" id="key-3" onclick="appendDial('3')">3<span class="digit-sub">DEF</span></button>
+          <button class="digit-btn" id="key-4" onclick="appendDial('4')">4<span class="digit-sub">GHI</span></button>
+          <button class="digit-btn" id="key-5" onclick="appendDial('5')">5<span class="digit-sub">JKL</span></button>
+          <button class="digit-btn" id="key-6" onclick="appendDial('6')">6<span class="digit-sub">MNO</span></button>
+          <button class="digit-btn" id="key-7" onclick="appendDial('7')">7<span class="digit-sub">PQRS</span></button>
+          <button class="digit-btn" id="key-8" onclick="appendDial('8')">8<span class="digit-sub">TUV</span></button>
+          <button class="digit-btn" id="key-9" onclick="appendDial('9')">9<span class="digit-sub">WXYZ</span></button>
+          <button class="digit-btn" id="key-star" onclick="appendDial('*')">*<span class="digit-sub">&nbsp;</span></button>
+          <button class="digit-btn" id="key-0" onclick="appendDial('0')">0<span class="digit-sub">+</span></button>
+          <button class="digit-btn" id="key-hash" onclick="appendDial('#')">#<span class="digit-sub">&nbsp;</span></button>
+        </div>
+
+        <div class="action-row">
+          <button id="btnLogout" class="btn-side">Sign Out</button>
+          <button id="btnCall" class="btn-call"><i class="icon">📞</i></button>
+          <button id="btnBackspace" class="btn-side" onclick="backspaceDial()">Delete</button>
+        </div>
+
+        <div id="logConsole"></div>
+      </div>
+
+      <!-- Active Call -->
+      <div id="callOverlay" class="call-overlay">
+        <div class="call-status" id="overlayStatus">Negotiating...</div>
+        <div class="overlay-header" id="overlayTarget">Unknown</div>
+        <div class="call-timer" id="callTimer">00:00</div>
+        <button id="btnHangup" class="btn-hangup"><i class="icon">✖</i></button>
+      </div>
+
+      <!-- Incoming -->
+      <div id="incomingModal" class="incoming-modal">
+        <div style="color: var(--royal-gold); letter-spacing: 4px; font-size: 11px; margin-bottom: 20px;">ROYAL CALL INCOMING</div>
+        <div id="incomingCaller" class="incoming-caller">Unknown</div>
+        <div class="incoming-actions">
+          <button id="btnReject" class="btn-inc btn-rej"><i class="icon">✖</i></button>
+          <button id="btnAnswer" class="btn-inc btn-ans"><i class="icon">✔</i></button>
+        </div>
+      </div>
+
+    </div>
+
+    <audio id="remoteAudio" autoplay></audio>
+    <script type="module" src="/src/main.ts"></script>
+    <script>
+      window.appendDial = (val) => {
+        const display = document.getElementById('dialpadDisplay');
+        if (display.innerText.length < 15) {
+          display.innerText += val;
+          // Visual feedback for click
+          const btn = document.getElementById(`key-${val === '*' ? 'star' : val === '#' ? 'hash' : val}`);
+          if (btn) {
+            btn.classList.add('kbd-active');
+            setTimeout(() => btn.classList.remove('kbd-active'), 100);
+          }
+        }
+      };
+      window.backspaceDial = () => {
+        const display = document.getElementById('dialpadDisplay');
+        display.innerText = display.innerText.slice(0, -1);
+      };
+    </script>
+  </body>
+</html>
