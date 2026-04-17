@@ -7,12 +7,14 @@ interface Contact {
     number: string;
     type: 'user' | 'group';
     members?: string[];
+    color?: string;
 }
 
 interface ChatMessage {
     sender: string;
     text: string;
     time: string;
+    date: string;
     isIncoming: boolean;
 }
 
@@ -21,7 +23,7 @@ let sipClient: SIPClient | null = null;
 let callStartTime: number = 0;
 let timerInterval: any = null;
 let contacts: Contact[] = JSON.parse(localStorage.getItem('contacts') || '[]');
-let activeChatNumber: string | null = null;
+let activeChatId: string | null = null;
 let chatHistory: Record<string, ChatMessage[]> = JSON.parse(localStorage.getItem('chatHistory') || '{}');
 
 // UI Screens
@@ -43,12 +45,32 @@ const chatMessages = document.getElementById('chatMessages') as HTMLDivElement;
 const chatInput = document.getElementById('chatInput') as HTMLInputElement;
 const chatBadge = document.getElementById('chatBadge') as HTMLSpanElement;
 const headerTitle = document.getElementById('headerTitle') as HTMLSpanElement;
+const regStatusSpan = document.getElementById('regStatus') as HTMLSpanElement;
+const regStatusContainer = document.getElementById('regStatusContainer') as HTMLDivElement;
 
 // Inputs
 const usernameInput = document.getElementById('username') as HTMLInputElement;
 const passwordInput = document.getElementById('password') as HTMLInputElement;
 const domainInput = document.getElementById('domain') as HTMLInputElement;
 const wsPortInput = document.getElementById('wsPort') as HTMLInputElement;
+
+// --- UTILS ---
+function getAvatarColor(name: string): string {
+    const colors = ['#1e293b', '#c5a059', '#166534', '#991b1b', '#1e40af', '#854d0e', '#3730a3', '#9f1239'];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+}
+
+function formatDateLabel(dateStr: string): string {
+    const today = new Date().toLocaleDateString();
+    const yesterday = new Date(Date.now() - 86400000).toLocaleDateString();
+    if (dateStr === today) return 'Today';
+    if (dateStr === yesterday) return 'Yesterday';
+    return dateStr;
+}
 
 // --- INITIALIZATION ---
 window.onload = () => {
@@ -67,62 +89,74 @@ navButtons.forEach(btn => {
 });
 
 function switchTab(tab: 'dial' | 'contacts' | 'chat') {
-    [dialScreen, contactsScreen, chatScreen].forEach(s => s.classList.remove('active'));
+    [dialScreen, contactsScreen, chatScreen].forEach(s => {
+        s.classList.remove('active');
+        s.style.display = 'none';
+        s.style.opacity = '0';
+    });
     navButtons.forEach(b => b.classList.remove('active'));
     chatRoomScreen.classList.remove('active');
 
-    if (tab === 'dial') {
-        dialScreen.classList.add('active');
-        document.getElementById('navDial')?.classList.add('active');
-        headerTitle.innerText = 'Royale Dial';
-    } else if (tab === 'contacts') {
-        contactsScreen.classList.add('active');
-        document.getElementById('navContacts')?.classList.add('active');
-        headerTitle.innerText = 'Royal Contacts';
-        updateContactList();
-    } else if (tab === 'chat') {
-        chatScreen.classList.add('active');
-        document.getElementById('navChat')?.classList.add('active');
-        headerTitle.innerText = 'Royal Messages';
+    const activeScreen = tab === 'dial' ? dialScreen : (tab === 'contacts' ? contactsScreen : chatScreen);
+    activeScreen.style.display = 'flex';
+    activeScreen.classList.add('active');
+    setTimeout(() => activeScreen.style.opacity = '1', 10);
+    
+    document.getElementById(`nav${tab.charAt(0).toUpperCase() + tab.slice(1)}`)?.classList.add('active');
+    headerTitle.innerText = tab === 'dial' ? 'Royale Dial' : (tab === 'contacts' ? 'Contacts' : 'Messages');
+
+    if (tab === 'chat') {
         updateChatList();
         chatBadge.style.display = 'none';
         chatBadge.innerText = '0';
+    } else if (tab === 'contacts') {
+        updateContactList();
     }
 }
 
 // --- CONTACTS LOGIC ---
-(window as any).showAddContactModal = () => addContactModal.classList.add('active');
-(window as any).hideAddContactModal = () => addContactModal.classList.remove('active');
+(window as any).showAddContactModal = () => addContactModal.style.display = 'flex';
+(window as any).hideAddContactModal = () => addContactModal.style.display = 'none';
 
 (window as any).saveNewContact = () => {
-    const name = (document.getElementById('contactName') as HTMLInputElement).value;
-    const number = (document.getElementById('contactNumber') as HTMLInputElement).value;
+    const nameInput = document.getElementById('contactName') as HTMLInputElement;
+    const numInput = document.getElementById('contactNumber') as HTMLInputElement;
+    const name = nameInput.value;
+    const number = numInput.value;
     if (!name || !number) return;
 
-    const newContact: Contact = { id: Date.now().toString(), name, number, type: 'user' };
+    const newContact: Contact = { 
+        id: Date.now().toString(), 
+        name, 
+        number, 
+        type: 'user',
+        color: getAvatarColor(name)
+    };
     contacts.push(newContact);
     localStorage.setItem('contacts', JSON.stringify(contacts));
+    nameInput.value = '';
+    numInput.value = '';
     updateContactList();
     (window as any).hideAddContactModal();
 };
 
 (window as any).createGroupFromSelected = () => {
-    const groupName = prompt("Enter Group Name:");
+    const groupName = prompt("Enter Royal Group Name:");
     if (!groupName) return;
     
-    // For now, group consists of ALL current contacts for simplicity in this prototype
-    const memberNumbers = contacts.map(c => c.number);
+    const memberNumbers = contacts.filter(c => c.type === 'user').map(c => c.number);
     if (memberNumbers.length === 0) {
-        alert("Add some contacts first!");
+        alert("Add some individual contacts first!");
         return;
     }
 
     const newGroup: Contact = { 
         id: 'group_' + Date.now(), 
         name: groupName, 
-        number: 'GROUP', // Identifier
+        number: 'GROUP',
         type: 'group', 
-        members: memberNumbers 
+        members: memberNumbers,
+        color: 'var(--royal-gold)'
     };
     
     contacts.push(newGroup);
@@ -133,18 +167,26 @@ function switchTab(tab: 'dial' | 'contacts' | 'chat') {
 
 function updateContactList() {
     contactList.innerHTML = '';
+    if (contacts.length === 0) {
+        contactList.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">👥</div>
+                <div class="empty-text">Your kingdom's contact list is empty. Add a new contact to begin.</div>
+            </div>
+        `;
+        return;
+    }
     contacts.forEach(c => {
         const item = document.createElement('div');
         item.className = 'list-item';
+        const color = c.color || getAvatarColor(c.name);
         item.innerHTML = `
-            <div class="avatar" style="${c.type === 'group' ? 'background: var(--royal-gold); color: white;' : ''}">
-                ${c.type === 'group' ? '👥' : c.name[0].toUpperCase()}
-            </div>
+            <div class="avatar" style="background: ${color}">${c.type === 'group' ? '👥' : c.name[0].toUpperCase()}</div>
             <div class="item-info">
                 <span class="item-name">${c.name}</span>
-                <span class="item-sub">${c.type === 'group' ? (c.members?.length + ' members') : c.number}</span>
+                <span class="item-sub">${c.type === 'group' ? (c.members?.length + ' Members') : c.number}</span>
             </div>
-            <button class="btn-primary" style="background:none; border:none; color:var(--royal-gold); font-size:20px;" onclick="event.stopPropagation(); startChat('${c.id}')">✉</button>
+            <button class="nav-btn" style="color: var(--royal-gold); font-size: 24px; padding: 10px;" onclick="event.stopPropagation(); startChat('${c.id}')">✉</button>
         `;
         item.onclick = () => {
             if (c.type === 'user') {
@@ -159,29 +201,42 @@ function updateContactList() {
 // --- CHAT LOGIC ---
 (window as any).startChat = (contactId: string) => {
     const contact = contacts.find(c => c.id === contactId);
-    if (!contact) return;
+    const name = contact ? contact.name : contactId;
+    const number = contact ? (contact.type === 'group' ? 'Group Chat' : contact.number) : contactId;
 
-    activeChatNumber = contactId;
-    document.getElementById('chatRoomName')!.innerText = contact.name;
-    document.getElementById('chatRoomNumber')!.innerText = contact.type === 'group' ? 'Group Chat' : contact.number;
-    chatRoomScreen.classList.add('active');
+    activeChatId = contactId;
+    document.getElementById('chatRoomName')!.innerText = name;
+    document.getElementById('chatRoomNumber')!.innerText = number;
+    chatRoomScreen.style.display = 'flex';
+    setTimeout(() => chatRoomScreen.classList.add('active'), 10);
     renderMessages(contactId);
 };
 
 (window as any).closeChatRoom = () => {
     chatRoomScreen.classList.remove('active');
-    activeChatNumber = null;
+    setTimeout(() => chatRoomScreen.style.display = 'none', 300);
+    activeChatId = null;
     updateChatList();
 };
 
 function renderMessages(contactId: string) {
     chatMessages.innerHTML = '';
     const history = chatHistory[contactId] || [];
+    let lastDate = "";
+
     history.forEach(msg => {
+        if (msg.date !== lastDate) {
+            const dateLabel = document.createElement('div');
+            dateLabel.style.cssText = "align-self: center; background: rgba(0,0,0,0.1); color: #555; padding: 4px 12px; border-radius: 20px; font-size: 10px; margin: 15px 0; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;";
+            dateLabel.innerText = formatDateLabel(msg.date);
+            chatMessages.appendChild(dateLabel);
+            lastDate = msg.date;
+        }
+
         const div = document.createElement('div');
         div.className = `bubble ${msg.isIncoming ? 'bubble-in' : 'bubble-out'}`;
         div.innerHTML = `
-            <div style="font-size: 10px; font-weight: bold; margin-bottom: 3px; color: var(--royal-gold); display: ${msg.isIncoming ? 'block' : 'none'}">${msg.sender}</div>
+            <div style="font-size: 10px; font-weight: 800; margin-bottom: 4px; color: var(--royal-gold); display: ${msg.isIncoming ? 'block' : 'none'}">${msg.sender}</div>
             ${msg.text}
             <span class="bubble-time">${msg.time}</span>
         `;
@@ -192,9 +247,20 @@ function renderMessages(contactId: string) {
 
 function updateChatList() {
     chatList.innerHTML = '';
-    const activeIds = Object.keys(chatHistory);
+    const activeIds = Object.keys(chatHistory).sort((a, b) => {
+        const histA = chatHistory[a];
+        const histB = chatHistory[b];
+        return new Date(histB[histB.length-1].date + ' ' + histB[histB.length-1].time).getTime() - 
+               new Date(histA[histA.length-1].date + ' ' + histA[histA.length-1].time).getTime();
+    });
+
     if (activeIds.length === 0) {
-        chatList.innerHTML = '<div style="text-align: center; color: #999; padding: 60px; font-size: 13px;">Your messages will appear here</div>';
+        chatList.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">✉</div>
+                <div class="empty-text">No royal messages yet. Speak your mind from the contacts list.</div>
+            </div>
+        `;
         return;
     }
 
@@ -203,16 +269,19 @@ function updateChatList() {
         const lastMsg = history[history.length - 1];
         const contact = contacts.find(c => c.id === id);
         const name = contact ? contact.name : id;
+        const color = contact ? (contact.color || getAvatarColor(name)) : '#64748b';
 
         const item = document.createElement('div');
         item.className = 'list-item';
         item.innerHTML = `
-            <div class="avatar">${contact?.type === 'group' ? '👥' : name[0].toUpperCase()}</div>
+            <div class="avatar" style="background: ${color}">${contact?.type === 'group' ? '👥' : name[0].toUpperCase()}</div>
             <div class="item-info">
                 <span class="item-name">${name}</span>
                 <span class="item-sub">${lastMsg.text}</span>
             </div>
-            <span style="font-size: 10px; color: #999;">${lastMsg.time}</span>
+            <div style="text-align: right; min-width: 60px;">
+                <div style="font-size: 10px; color: #94a3b8; font-weight: 700;">${lastMsg.time}</div>
+            </div>
         `;
         item.onclick = () => (window as any).startChat(id);
         chatList.appendChild(item);
@@ -221,34 +290,35 @@ function updateChatList() {
 
 document.getElementById('btnSendChat')?.addEventListener('click', () => {
     const text = chatInput.value;
-    if (!text || !activeChatNumber || !sipClient) return;
+    if (!text || !activeChatId || !sipClient) return;
 
-    const contact = contacts.find(c => c.id === activeChatNumber);
-    if (!contact) return;
-
+    const contact = contacts.find(c => c.id === activeChatId);
     const domain = domainInput.value;
     
     try {
-        if (contact.type === 'group' && contact.members) {
+        if (contact && contact.type === 'group' && contact.members) {
             contact.members.forEach(num => {
                 sipClient?.sendMessage(`sip:${num}@${domain}`, text);
             });
-            saveMessage(activeChatNumber, text, false, 'Me');
+            saveMessage(activeChatId, text, false, 'Me');
         } else {
-            sipClient.sendMessage(`sip:${contact.number}@${domain}`, text);
-            saveMessage(activeChatNumber, text, false, 'Me');
+            const targetNum = contact ? contact.number : activeChatId;
+            sipClient.sendMessage(`sip:${targetNum}@${domain}`, text);
+            saveMessage(activeChatId, text, false, 'Me');
         }
         chatInput.value = '';
-        renderMessages(activeChatNumber);
+        renderMessages(activeChatId);
     } catch (e) {
-        alert("Failed to send: " + e);
+        alert("Transmission failure: " + e);
     }
 });
 
 function saveMessage(id: string, text: string, isIncoming: boolean, sender: string) {
     if (!chatHistory[id]) chatHistory[id] = [];
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    chatHistory[id].push({ sender, text, time, isIncoming });
+    const now = new Date();
+    const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const date = now.toLocaleDateString();
+    chatHistory[id].push({ sender, text, time, date, isIncoming });
     localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
 }
 
@@ -266,23 +336,38 @@ document.getElementById('btnLogin')?.addEventListener('click', () => {
         displayName: username
     };
 
+    const btn = document.getElementById('btnLogin') as HTMLButtonElement;
+    btn.innerText = "Authenticating...";
+    btn.disabled = true;
+
     sipClient = new SIPClient(config);
     
     sipClient.onRegistered = () => {
         loginScreen.classList.remove('active');
-        mainScreen.classList.add('active');
+        setTimeout(() => {
+            loginScreen.style.display = 'none';
+            mainScreen.style.display = 'flex';
+            setTimeout(() => mainScreen.classList.add('active'), 10);
+            regStatusSpan.innerText = 'Online';
+            regStatusContainer.classList.add('status-registered');
+            btn.innerText = "Begin Session";
+            btn.disabled = false;
+        }, 400);
     };
 
-    sipClient.onRegistrationFailed = (cause) => alert("Access Denied: " + cause);
+    sipClient.onRegistrationFailed = (cause) => {
+        alert("Authentication failed: " + cause);
+        btn.innerText = "Begin Session";
+        btn.disabled = false;
+    };
 
     sipClient.onNewMessage = (sender, body) => {
-        // Find if sender belongs to a group or is a direct contact
         const contact = contacts.find(c => c.number === sender);
         const chatId = contact ? contact.id : sender;
         
         saveMessage(chatId, body, true, sender);
         
-        if (activeChatNumber === chatId) {
+        if (activeChatId === chatId) {
             renderMessages(chatId);
         } else {
             chatBadge.style.display = 'flex';
@@ -292,14 +377,19 @@ document.getElementById('btnLogin')?.addEventListener('click', () => {
 
     sipClient.onIncomingCall = () => {
         const session = (sipClient as any).currentSession;
-        document.getElementById('incomingCaller')!.innerText = session.remote_identity.uri.user;
-        incomingModal.classList.add('active');
+        const callerNum = session.remote_identity.uri.user;
+        const contact = contacts.find(c => c.number === callerNum);
+        document.getElementById('incomingCaller')!.innerText = contact ? contact.name : callerNum;
+        incomingModal.style.display = 'flex';
+        setTimeout(() => (incomingModal as any).classList.add('active'), 10);
     };
 
     sipClient.onSessionEnd = () => {
         stopTimer();
         callOverlay.classList.remove('active');
+        setTimeout(() => callOverlay.style.display = 'none', 500);
         incomingModal.classList.remove('active');
+        setTimeout(() => incomingModal.style.display = 'none', 500);
     };
 
     sipClient.start();
@@ -315,10 +405,15 @@ function initiateCall(video: boolean) {
     const fullUri = `sip:${num}@${domainInput.value}`;
     
     const session = sipClient.call(fullUri, video);
-    document.getElementById('overlayTarget')!.innerText = num;
-    callOverlay.classList.add('active');
+    const contact = contacts.find(c => c.number === num);
+    document.getElementById('overlayTarget')!.innerText = contact ? contact.name : num;
+    document.getElementById('overlayStatus')!.innerText = video ? "Video Negotiating..." : "Voice Negotiating...";
+    
+    callOverlay.style.display = 'flex';
+    setTimeout(() => callOverlay.classList.add('active'), 10);
     
     session.on('confirmed', () => {
+        document.getElementById('overlayStatus')!.innerText = "Secure Connection";
         startTimer();
     });
 }
@@ -327,15 +422,22 @@ document.getElementById('btnHangup')?.addEventListener('click', () => sipClient?
 document.getElementById('btnAnswerAudio')?.addEventListener('click', () => {
     sipClient?.answer(false);
     incomingModal.classList.remove('active');
-    callOverlay.classList.add('active');
+    setTimeout(() => incomingModal.style.display = 'none', 500);
+    
+    callOverlay.style.display = 'flex';
+    setTimeout(() => callOverlay.classList.add('active'), 10);
+    document.getElementById('overlayStatus')!.innerText = "Secure Connection";
+    startTimer();
 });
 document.getElementById('btnReject')?.addEventListener('click', () => {
     sipClient?.hangup();
     incomingModal.classList.remove('active');
+    setTimeout(() => incomingModal.style.display = 'none', 500);
 });
 
 // Timer
 function startTimer() {
+    stopTimer();
     callStartTime = Date.now();
     timerInterval = setInterval(() => {
         const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
