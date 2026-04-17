@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Baginda Royale Phone v4</title>
+    <title>Baginda Royale Phone v5</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
     <style>
       :root {
@@ -12,117 +12,107 @@
         --ivory: #fdfcf0;
         --danger: #991b1b;
         --success: #166534;
-        --light-gray: #f1f5f9;
+        --light-gray: #f8fafc;
+        --whatsapp-green: #25d366;
       }
 
       * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
-      body { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+      body { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
       
-      .phone-container { background: var(--ivory); width: 400px; height: 780px; border-radius: 40px; box-shadow: 0 40px 100px rgba(0,0,0,0.6); border: 12px solid #1a1a1a; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+      .phone-container { background: var(--ivory); width: 420px; height: 800px; border-radius: 40px; box-shadow: 0 40px 100px rgba(0,0,0,0.6); border: 12px solid #1a1a1a; position: relative; overflow: hidden; display: flex; flex-direction: column; }
 
-      /* --- Common Screens --- */
-      .screen { display: none; flex-direction: column; height: 100%; animation: fadeIn 0.3s ease; }
+      /* --- Screens --- */
+      .screen { display: none; flex-direction: column; height: 100%; animation: fadeIn 0.3s ease; position: relative; }
       .screen.active { display: flex; }
-      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
       /* --- Login --- */
-      #loginScreen { padding: 50px 30px; }
-      h2 { font-family: 'Playfair Display', serif; text-align: center; color: var(--royal-navy); font-size: 32px; margin-bottom: 30px; }
-      .input-group { margin-bottom: 20px; }
-      .input-group label { font-size: 10px; font-weight: 700; color: var(--royal-gold); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; display: block; }
-      .input-group input { width: 100%; padding: 10px 0; border: none; border-bottom: 2px solid #e2e8f0; background: transparent; font-size: 16px; outline: none; }
-      .btn-primary { background: var(--royal-navy); color: var(--royal-gold); border: 1px solid var(--royal-gold); padding: 18px; border-radius: 8px; font-weight: 600; cursor: pointer; text-transform: uppercase; letter-spacing: 3px; margin-top: 20px; }
+      #loginScreen { padding: 60px 40px; }
+      h2 { font-family: 'Playfair Display', serif; text-align: center; color: var(--royal-navy); font-size: 36px; margin-bottom: 30px; letter-spacing: -1px; }
+      .input-group { margin-bottom: 25px; }
+      .input-group label { font-size: 10px; font-weight: 800; color: var(--royal-gold); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; display: block; }
+      .input-group input { width: 100%; padding: 12px 0; border: none; border-bottom: 2px solid #e2e8f0; background: transparent; font-size: 16px; outline: none; transition: 0.3s; }
+      .input-group input:focus { border-bottom-color: var(--royal-gold); }
+      .btn-primary { background: var(--royal-navy); color: var(--royal-gold); border: 1px solid var(--royal-gold); padding: 18px; border-radius: 12px; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 3px; margin-top: 20px; transition: 0.3s; }
+      .btn-primary:hover { background: var(--royal-gold); color: var(--royal-navy); }
 
       /* --- Header --- */
-      .phone-header { padding: 15px 20px; background: white; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; z-index: 10; }
-      .header-title { font-family: 'Playfair Display', serif; color: var(--royal-navy); font-weight: 700; font-size: 18px; }
-      .status-pill { font-size: 8px; padding: 2px 8px; border-radius: 10px; border: 1px solid #ddd; color: #999; text-transform: uppercase; }
-      .status-registered { border-color: var(--success); color: var(--success); font-weight: 700; }
+      .phone-header { padding: 20px; background: white; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; z-index: 10; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
+      .header-title { font-family: 'Playfair Display', serif; color: var(--royal-navy); font-weight: 700; font-size: 20px; }
+      .status-pill { font-size: 9px; padding: 3px 10px; border-radius: 20px; border: 1px solid #ddd; color: #999; text-transform: uppercase; font-weight: 600; }
+      .status-registered { border-color: var(--success); color: var(--success); background: #f0fdf4; }
 
-      /* --- Content Area --- */
-      .content-area { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; position: relative; }
+      /* --- Content --- */
+      .content-area { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; background: #fff; }
 
-      /* --- Dialpad (Minimalist) --- */
-      #dialpadDisplay { height: 80px; font-size: 42px; display: flex; align-items: center; justify-content: center; color: var(--royal-navy); font-weight: 300; margin: 10px 0; }
-      .dialpad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 0 30px; }
-      .digit-btn { height: 65px; width: 65px; margin: auto; border-radius: 50%; border: none; background: white; font-size: 24px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-      .digit-btn:active { background: var(--royal-gold); color: white; }
-      .digit-sub { font-size: 7px; color: var(--royal-gold); font-weight: 700; display: block; margin-top: -4px; }
-      .call-actions { display: flex; justify-content: center; gap: 25px; margin-top: 30px; }
-      .btn-circle { width: 65px; height: 65px; border-radius: 50%; border: none; color: white; cursor: pointer; font-size: 24px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
-      .btn-audio { background: var(--success); }
-      .btn-video { background: var(--royal-gold); }
+      /* --- Dialpad --- */
+      #dialpadDisplay { height: 100px; font-size: 48px; display: flex; align-items: center; justify-content: center; color: var(--royal-navy); font-weight: 300; margin: 10px 0; }
+      .dialpad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 0 40px; }
+      .digit-btn { height: 75px; width: 75px; margin: auto; border-radius: 50%; border: none; background: var(--light-gray); font-size: 28px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+      .digit-btn:active { background: var(--royal-gold); color: white; transform: scale(0.9); }
+      .call-actions { display: flex; justify-content: center; gap: 30px; margin-top: 40px; }
 
-      /* --- List Styles (Contacts & Chats) --- */
-      .list-view { list-style: none; padding: 0; margin: 0; }
-      .list-item { display: flex; align-items: center; padding: 15px 20px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: 0.2s; }
+      /* --- List Views --- */
+      .list-item { display: flex; align-items: center; padding: 16px 20px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: 0.2s; }
       .list-item:hover { background: #f8fafc; }
-      .avatar { width: 45px; height: 45px; background: var(--royal-navy); color: var(--royal-gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; margin-right: 15px; border: 1px solid var(--royal-gold); }
+      .avatar { width: 50px; height: 50px; background: var(--royal-navy); color: var(--royal-gold); border-radius: 15px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px; margin-right: 15px; border: 1px solid var(--royal-gold); }
       .item-info { flex-grow: 1; }
-      .item-name { font-weight: 600; color: var(--royal-navy); font-size: 14px; display: block; }
-      .item-sub { font-size: 12px; color: #64748b; }
+      .item-name { font-weight: 700; color: var(--royal-navy); font-size: 15px; display: block; margin-bottom: 2px; }
+      .item-sub { font-size: 12px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
 
-      /* --- Action Buttons --- */
-      .fab { position: absolute; bottom: 20px; right: 20px; width: 55px; height: 55px; border-radius: 50%; background: var(--royal-navy); color: var(--royal-gold); border: 1px solid var(--royal-gold); font-size: 24px; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 20; }
-
-      /* --- Chat Room --- */
-      #chatRoomScreen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--ivory); z-index: 50; display: none; }
+      /* --- Chat Room (Polished) --- */
+      #chatRoomScreen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #e5ddd5; z-index: 100; display: none; flex-direction: column; }
       #chatRoomScreen.active { display: flex; }
-      .chat-header { padding: 15px; background: white; border-bottom: 1px solid #eee; display: flex; align-items: center; }
-      .btn-back { background: none; border: none; font-size: 20px; cursor: pointer; padding: 0 10px; color: var(--royal-gold); }
-      .chat-messages { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-      .bubble { max-width: 80%; padding: 10px 15px; border-radius: 18px; font-size: 13px; line-height: 1.4; position: relative; }
-      .bubble-in { align-self: flex-start; background: #e2e8f0; border-bottom-left-radius: 2px; }
-      .bubble-out { align-self: flex-end; background: var(--royal-navy); color: var(--royal-gold); border-bottom-right-radius: 2px; }
-      .bubble-time { font-size: 8px; opacity: 0.5; text-align: right; margin-top: 4px; }
-      .chat-footer { padding: 15px; background: white; display: flex; gap: 10px; align-items: center; }
-      .chat-input { flex-grow: 1; border: 1px solid #e2e8f0; border-radius: 25px; padding: 10px 20px; outline: none; font-size: 14px; }
-      .btn-send { background: var(--royal-navy); color: var(--royal-gold); border: 1px solid var(--royal-gold); width: 40px; height: 40px; border-radius: 50%; cursor: pointer; }
+      .chat-header { padding: 12px 15px; background: var(--royal-navy); color: white; display: flex; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+      .chat-header .item-name { color: white; }
+      .chat-header .item-sub { color: var(--royal-gold); opacity: 0.8; }
+      .chat-messages { flex-grow: 1; padding: 20px 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-repeat: repeat; }
+      
+      .bubble { max-width: 75%; padding: 8px 12px; border-radius: 12px; font-size: 14px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); line-height: 1.5; }
+      .bubble-in { align-self: flex-start; background: white; color: #303030; border-top-left-radius: 2px; }
+      .bubble-out { align-self: flex-end; background: #dcf8c6; color: #303030; border-top-right-radius: 2px; }
+      .bubble-time { font-size: 9px; color: #999; text-align: right; margin-top: 4px; display: block; }
+      
+      .chat-footer { padding: 10px 15px; background: #f0f0f0; display: flex; gap: 10px; align-items: center; }
+      .chat-input { flex-grow: 1; border: none; border-radius: 25px; padding: 12px 18px; outline: none; font-size: 14px; background: white; }
+      .btn-send { background: var(--royal-navy); color: var(--royal-gold); border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; transition: 0.3s; }
+      .btn-send:hover { transform: rotate(15deg) scale(1.1); }
 
-      /* --- Navigation Footer --- */
-      .phone-footer { height: 75px; background: white; border-top: 1px solid #f1f5f9; display: flex; justify-content: space-around; align-items: center; }
-      .nav-btn { background: none; border: none; color: #94a3b8; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; transition: 0.3s; position: relative; }
+      /* --- Navigation --- */
+      .phone-footer { height: 80px; background: white; border-top: 1px solid #f1f5f9; display: flex; justify-content: space-around; align-items: center; }
+      .nav-btn { background: none; border: none; color: #94a3b8; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; transition: 0.3s; }
       .nav-btn.active { color: var(--royal-gold); }
-      .nav-icon { font-size: 20px; }
-      .nav-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-      .badge { position: absolute; top: -2px; right: -5px; background: var(--danger); color: white; border-radius: 50%; width: 14px; height: 14px; font-size: 8px; display: none; align-items: center; justify-content: center; font-weight: 800; border: 2px solid white; }
+      .nav-icon { font-size: 22px; }
+      .nav-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
 
-      /* --- Modals --- */
-      .modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 1000; }
+      /* --- FAB & Modals --- */
+      .fab { position: absolute; bottom: 30px; right: 30px; width: 60px; height: 60px; border-radius: 20px; background: var(--royal-navy); color: var(--royal-gold); border: 2px solid var(--royal-gold); font-size: 30px; cursor: pointer; box-shadow: 0 10px 25px rgba(0,0,0,0.3); z-index: 20; transition: 0.3s; }
+      .fab:hover { transform: scale(1.1) rotate(90deg); }
+      
+      .modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.8); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(5px); }
       .modal-overlay.active { display: flex; }
-      .modal-card { background: white; width: 85%; padding: 25px; border-radius: 20px; }
-      .modal-card h3 { font-family: 'Playfair Display', serif; margin-top: 0; }
-
-      /* --- Call Overlay --- */
-      .call-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: none; z-index: 500; }
-      .call-overlay.active { display: flex; flex-direction: column; }
-      #remoteVideo { width: 100%; height: 100%; object-fit: cover; }
-      #localVideo { width: 100px; height: 150px; border: 2px solid var(--royal-gold); position: absolute; bottom: 120px; right: 20px; border-radius: 10px; object-fit: cover; background: #222; }
-      .call-info { position: absolute; top: 60px; width: 100%; text-align: center; color: white; }
-      .btn-hangup { background: var(--danger); width: 75px; height: 75px; border-radius: 50%; border: none; color: white; font-size: 32px; cursor: pointer; position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); }
-
-      /* --- Incoming Call Modal (Standalone) --- */
-      #incomingModal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.95); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 600; color: white; }
-      #incomingModal.active { display: flex; }
+      .modal-card { background: white; width: 85%; padding: 30px; border-radius: 25px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+      .modal-card h3 { font-family: 'Playfair Display', serif; margin-top: 0; color: var(--royal-navy); font-size: 24px; }
 
       .icon { font-style: normal; }
+      #logConsole { background: #000; color: #00ff00; font-family: monospace; font-size: 8px; height: 50px; overflow-y: auto; padding: 5px 15px; opacity: 0.6; }
     </style>
   </head>
   <body>
     <div class="phone-container">
       
-      <!-- Screen: Login -->
+      <!-- Login -->
       <div id="loginScreen" class="screen active">
         <div style="text-align: center; margin-bottom: 20px;"><span style="color: var(--royal-gold); font-size: 60px;">⚜</span></div>
         <h2>Royale Phone</h2>
-        <div class="input-group"><label>Identity</label><input type="text" id="username" value="031"></div>
-        <div class="input-group"><label>Password</label><input type="password" id="password" value="12345a"></div>
+        <div class="input-group"><label>Royal Identity</label><input type="text" id="username" value="031"></div>
+        <div class="input-group"><label>Access Key</label><input type="password" id="password" value="12345a"></div>
         <div class="input-group"><label>Domain</label><input type="text" id="domain" value="10.10.10.97"></div>
         <div class="input-group"><label>Port</label><input type="text" id="wsPort" value="8088"></div>
-        <button id="btnLogin" class="btn-primary">Connect</button>
+        <button id="btnLogin" class="btn-primary">Authenticate</button>
       </div>
 
-      <!-- Screen: Main -->
+      <!-- Main -->
       <div id="mainScreen" class="screen">
         <div class="phone-header">
           <span class="header-title" id="headerTitle">Phone</span>
@@ -130,113 +120,100 @@
         </div>
 
         <div class="content-area">
-          
-          <!-- Inner: Phone/Dialpad -->
+          <!-- Dialpad -->
           <div id="dialScreen" class="screen active">
             <div id="dialpadDisplay"></div>
             <div class="dialpad-grid">
-              <button class="digit-btn" onclick="appendDial('1')">1<span class="digit-sub">&nbsp;</span></button>
-              <button class="digit-btn" onclick="appendDial('2')">2<span class="digit-sub">ABC</span></button>
-              <button class="digit-btn" onclick="appendDial('3')">3<span class="digit-sub">DEF</span></button>
-              <button class="digit-btn" onclick="appendDial('4')">4<span class="digit-sub">GHI</span></button>
-              <button class="digit-btn" onclick="appendDial('5')">5<span class="digit-sub">JKL</span></button>
-              <button class="digit-btn" onclick="appendDial('6')">6<span class="digit-sub">MNO</span></button>
-              <button class="digit-btn" onclick="appendDial('7')">7<span class="digit-sub">PQRS</span></button>
-              <button class="digit-btn" onclick="appendDial('8')">8<span class="digit-sub">TUV</span></button>
-              <button class="digit-btn" onclick="appendDial('9')">9<span class="digit-sub">WXYZ</span></button>
-              <button class="digit-btn" onclick="appendDial('*')">*<span class="digit-sub">&nbsp;</span></button>
-              <button class="digit-btn" onclick="appendDial('0')">0<span class="digit-sub">+</span></button>
-              <button class="digit-btn" onclick="appendDial('#')">#<span class="digit-sub">&nbsp;</span></button>
+              <button class="digit-btn" onclick="appendDial('1')">1</button>
+              <button class="digit-btn" onclick="appendDial('2')">2</button>
+              <button class="digit-btn" onclick="appendDial('3')">3</button>
+              <button class="digit-btn" onclick="appendDial('4')">4</button>
+              <button class="digit-btn" onclick="appendDial('5')">5</button>
+              <button class="digit-btn" onclick="appendDial('6')">6</button>
+              <button class="digit-btn" onclick="appendDial('7')">7</button>
+              <button class="digit-btn" onclick="appendDial('8')">8</button>
+              <button class="digit-btn" onclick="appendDial('9')">9</button>
+              <button class="digit-btn" onclick="appendDial('*')">*</button>
+              <button class="digit-btn" onclick="appendDial('0')">0</button>
+              <button class="digit-btn" onclick="appendDial('#')">#</button>
             </div>
             <div class="call-actions">
-              <button id="btnCallAudio" class="btn-circle btn-audio"><i class="icon">📞</i></button>
-              <button id="btnCallVideo" class="btn-circle btn-video"><i class="icon">📹</i></button>
+              <button id="btnCallAudio" class="btn-primary" style="border-radius: 50%; width: 70px; height: 70px; padding:0; background: var(--success); border:none;"><i class="icon">📞</i></button>
+              <button id="btnCallVideo" class="btn-primary" style="border-radius: 50%; width: 70px; height: 70px; padding:0; background: var(--royal-gold); border:none;"><i class="icon">📹</i></button>
             </div>
           </div>
 
-          <!-- Inner: Contacts -->
+          <!-- Contacts -->
           <div id="contactsScreen" class="screen">
-            <div id="contactList" class="list-view">
-              <!-- Contacts dynamic -->
-            </div>
+            <div id="contactList" class="list-view"></div>
             <button class="fab" onclick="showAddContactModal()"><i class="icon">+</i></button>
           </div>
 
-          <!-- Inner: Chats -->
+          <!-- Chats -->
           <div id="chatScreen" class="screen">
-            <div id="chatList" class="list-view">
-              <!-- Recent chats dynamic -->
-              <div style="text-align: center; color: #999; padding: 40px; font-size: 12px;">Start a chat from Contacts</div>
-            </div>
+            <div id="chatList" class="list-view"></div>
           </div>
 
-          <!-- Screen: Chat Room (Detail) -->
+          <!-- Chat Room Overlay -->
           <div id="chatRoomScreen">
             <div class="chat-header">
-              <button class="btn-back" onclick="closeChatRoom()"><i class="icon">←</i></button>
+              <button class="btn-primary" style="background:none; border:none; color:white; font-size:24px; padding: 0 15px 0 5px;" onclick="closeChatRoom()"><i class="icon">←</i></button>
               <div class="item-info">
                 <span class="item-name" id="chatRoomName">Name</span>
-                <span class="item-sub" id="chatRoomNumber">031</span>
+                <span class="item-sub" id="chatRoomNumber">Number</span>
               </div>
             </div>
             <div id="chatMessages" class="chat-messages"></div>
             <div class="chat-footer">
-              <input type="text" id="chatInput" class="chat-input" placeholder="Aa">
+              <input type="text" id="chatInput" class="chat-input" placeholder="Type a message...">
               <button id="btnSendChat" class="btn-send"><i class="icon">➤</i></button>
             </div>
           </div>
         </div>
 
+        <div id="logConsole"></div>
+
         <div class="phone-footer">
-          <button class="nav-btn active" id="navDial">
-            <i class="icon nav-icon">📱</i><span class="nav-label">Phone</span>
-          </button>
-          <button class="nav-btn" id="navContacts">
-            <i class="icon nav-icon">👥</i><span class="nav-label">Contacts</span>
-          </button>
-          <button class="nav-btn" id="navChat">
-            <div style="position: relative;">
-              <i class="icon nav-icon">✉</i>
-              <span id="chatBadge" class="badge">0</span>
-            </div>
-            <span class="nav-label">Chat</span>
-          </button>
+          <button class="nav-btn active" id="navDial"><i class="icon nav-icon">📱</i><span class="nav-label">Phone</span></button>
+          <button class="nav-btn" id="navContacts"><i class="icon nav-icon">👥</i><span class="nav-label">Contacts</span></button>
+          <button class="nav-btn" id="navChat"><div style="position:relative;"><i class="icon nav-icon">✉</i><span id="chatBadge" style="display:none; position:absolute; top:-5px; right:-8px; background:var(--danger); color:white; border-radius:50%; width:16px; height:16px; font-size:9px; align-items:center; justify-content:center; border:2px solid white;">0</span></div><span class="nav-label">Chat</span></button>
         </div>
       </div>
 
-      <!-- Modal: Add Contact -->
+      <!-- Modals -->
       <div id="addContactModal" class="modal-overlay">
         <div class="modal-card">
-          <h3>Add Contact</h3>
+          <h3>New Contact</h3>
           <div class="input-group"><label>Name</label><input type="text" id="contactName"></div>
-          <div class="input-group"><label>Number / SIP URI</label><input type="text" id="contactNumber"></div>
-          <div style="display: flex; gap: 10px;">
+          <div class="input-group"><label>SIP Number</label><input type="text" id="contactNumber"></div>
+          <div style="display:flex; gap:10px;">
             <button class="btn-primary" style="flex:1; margin-top:0;" onclick="saveNewContact()">Save</button>
-            <button class="btn-primary" style="flex:1; margin-top:0; background: #eee; color: #666; border: none;" onclick="hideAddContactModal()">Cancel</button>
+            <button class="btn-primary" style="flex:1; margin-top:0; background:#eee; color:#666; border:none;" onclick="hideAddContactModal()">Cancel</button>
           </div>
-          <div style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
-            <button class="btn-primary" style="width:100%; margin-top:0; background: var(--royal-gold); border: none; color: white;" onclick="createGroupFromSelected()">Create Group</button>
+          <div style="margin-top:15px; border-top:1px solid #eee; padding-top:15px;">
+            <button class="btn-primary" style="width:100%; margin-top:0; background:var(--royal-gold); border:none; color:white;" onclick="createGroupFromSelected()">Create Group</button>
           </div>
         </div>
       </div>
 
-      <!-- Call Overlays -->
+      <!-- Call Overlay -->
       <div id="callOverlay" class="call-overlay">
         <video id="remoteVideo" autoplay playsinline></video>
         <video id="localVideo" autoplay muted playsinline></video>
         <div class="call-info">
-          <h3 id="overlayTarget">Unknown</h3>
-          <div id="callTimer">00:00</div>
+          <h3 id="overlayTarget" style="font-family:'Playfair Display',serif; font-size:32px; margin:0;">Target</h3>
+          <div id="callTimer" style="font-size:18px; margin-top:10px; color:var(--royal-gold);">00:00</div>
         </div>
         <button id="btnHangup" class="btn-hangup"><i class="icon">✖</i></button>
       </div>
 
-      <div id="incomingModal">
-        <div style="color: var(--royal-gold); letter-spacing: 4px; font-size: 11px; margin-bottom: 20px;">INCOMING CALL</div>
-        <div id="incomingCaller" style="font-family: 'Playfair Display', serif; font-size: 36px; margin-bottom: 50px;">Unknown</div>
-        <div style="display: flex; gap: 40px;">
-          <button id="btnReject" class="btn-circle" style="background: var(--danger); width: 75px; height: 75px;"><i class="icon">✖</i></button>
-          <button id="btnAnswerAudio" class="btn-circle" style="background: var(--success); width: 75px; height: 75px;"><i class="icon">📞</i></button>
+      <!-- Incoming Call -->
+      <div id="incomingModal" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.95); display:none; flex-direction:column; align-items:center; justify-content:center; z-index:1000; color:white;">
+        <div style="color:var(--royal-gold); letter-spacing:4px; font-size:11px; margin-bottom:20px;">INCOMING ROYAL CALL</div>
+        <div id="incomingCaller" style="font-family:'Playfair Display',serif; font-size:36px; margin-bottom:60px;">Unknown</div>
+        <div style="display:flex; gap:40px;">
+          <button id="btnReject" class="btn-primary" style="background:var(--danger); border:none; width:80px; height:80px; border-radius:50%;"><i class="icon">✖</i></button>
+          <button id="btnAnswerAudio" class="btn-primary" style="background:var(--success); border:none; width:80px; height:80px; border-radius:50%;"><i class="icon">📞</i></button>
         </div>
       </div>
 
@@ -246,8 +223,8 @@
     <script type="module" src="/src/main.ts"></script>
     <script>
       window.appendDial = (val) => {
-        const display = document.getElementById('dialpadDisplay');
-        if (display.innerText.length < 15) display.innerText += val;
+        const d = document.getElementById('dialpadDisplay');
+        if (d.innerText.length < 15) d.innerText += val;
       };
     </script>
   </body>
